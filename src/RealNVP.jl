@@ -1,5 +1,5 @@
 module RealNVP
 
-greet() = print("Hello World!")
+include("core.jl")
 
 end # module

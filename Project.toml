@@ -1,6 +1,8 @@
-authors = ["Andrei Zhabinski <andrei.zhabinski@gmail.com>"]
 name = "RealNVP"
 uuid = "43a1c096-ccda-11e8-1a75-499b6dfe20af"
+authors = ["Andrei Zhabinski <andrei.zhabinski@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Yota = "f7b0de00-8e67-11e8-1ba4-09bec8501be6"
