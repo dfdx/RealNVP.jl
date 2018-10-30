@@ -73,7 +73,7 @@ function f_func(c::Coupling, x)
     xp = mask .* x
     sv = s(xp) .* (1 .- mask)
     tv = t(xp) .* (1 .- mask)
-    z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ zp
+    z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ xp
     return z
 end
 
