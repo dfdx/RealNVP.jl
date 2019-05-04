@@ -46,17 +46,24 @@ mutable struct Coupling
 end
 
 
-function f_func(c::Coupling, x)
+"""
+Forward mapping x → z. Same as f() function in the paper
+"""
+function fwd_map(c::Coupling, x)
     mask, s, t = c.mask, c.s, c.t
     xp = mask .* x
     sv = s(xp) .* (1 .- mask)
     tv = t(xp) .* (1 .- mask)
     z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ xp
-    return z
+    log_det_J = reshape(sum(sv; dims=1), size(sv, 2))
+    return z, log_det_J
 end
 
 
-function g_func(c::Coupling, z)
+"""
+Inverse mapping z → x. Same as g() function in the paper
+"""
+function inv_map(c::Coupling, z)
     mask, s, t = c.mask, c.s, c.t
     zp = mask .* z
     sv = s(zp) .* (1 .- mask)
