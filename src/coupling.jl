@@ -29,21 +29,26 @@ function (m::MLP3{T})(x) where T
 end
 
 
-loss(m::MLP3, x) = sum(m(x))
-
-
-function main()
-    m = MLP3{Float32}(5, 3, 3, 5)
-    x = rand(5, 10)
-    v, g = grad(loss, m, x)
-end
-
-
 mutable struct Coupling
     mask  # {0, 1} array for input splitting
     s     # callable struct representing s function (scale)
     t     # callable struct representing t function (translation)
 end
+
+
+# """
+# Forward mapping x → z. Same as f() function in the paper
+# """
+# function fwd_map(c::Coupling, x)
+#     mask, s, t = c.mask, c.s, c.t
+#     xp = mask .* x
+#     sv = s(xp) .* (1 .- mask)
+#     tv = t(xp) .* (1 .- mask)
+#     z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ xp
+#     log_det_J = reshape(sum(sv; dims=1), size(sv, 2))
+#     return z, log_det_J
+#     # return z
+# end
 
 
 """
@@ -57,6 +62,7 @@ function fwd_map(c::Coupling, x)
     z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ xp
     log_det_J = reshape(sum(sv; dims=1), size(sv, 2))
     return z, log_det_J
+    # return log_det_J
 end
 
 
@@ -70,4 +76,24 @@ function inv_map(c::Coupling, z)
     tv = t(zp) .* (1 .- mask)
     x = zp .+ (1 .- mask) .* (z .* exp.(sv) .+ tv)
     return x
+end
+
+
+########################
+
+function c_loss(c::Coupling, x)
+    z, log_det_J = fwd_map(c, x)
+    return sum(z)
+end
+
+function aux1()
+    flow = RealNVP(2, 256)
+    c = flow.c1
+    X, y = make_moons()
+    x = X[:, 1:10]
+
+    _, tape = trace(c_loss, c, x; optimize=false)
+    _, g = grad(c_loss, c, x)
+
+    g[1][(:mask,)]
 end
