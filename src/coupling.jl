@@ -1,33 +1,3 @@
-mutable struct MLP3{T}
-    W1::AbstractMatrix{T}
-    b1::AbstractVector{T}
-    W2::AbstractMatrix{T}
-    b2::AbstractVector{T}
-    W3::AbstractMatrix{T}
-    b3::AbstractVector{T}
-end
-
-MLP3{T}(n1, n2, n3, n4) where T = MLP3(randn(T, n2, n1), randn(T, n2),
-                                       randn(T, n3, n2), randn(T, n3),
-                                       randn(T, n4, n3), randn(T, n4))
-
-MLP3(n1, n2, n3, n4) = MLP3{Float64}(n1, n2, n3, n4)
-
-
-function Base.show(io::IO, m::MLP3{T}) where T
-    n2, n1 = size(m.W1)
-    n4, n3 = size(m.W3)
-    print(io, "MLP{$T}($n1, $n2, $n3, $n4)")
-end
-
-
-function (m::MLP3{T})(x) where T
-    x = relu(m.W1 * x .+ m.b1)
-    x = relu(m.W2 * x .+ m.b2)
-    x = relu(m.W3 * x .+ m.b3)
-    return x
-end
-
 
 mutable struct Coupling
     mask  # {0, 1} array for input splitting
@@ -36,20 +6,7 @@ mutable struct Coupling
 end
 
 
-# """
-# Forward mapping x → z. Same as f() function in the paper
-# """
-# function fwd_map(c::Coupling, x)
-#     mask, s, t = c.mask, c.s, c.t
-#     xp = mask .* x
-#     sv = s(xp) .* (1 .- mask)
-#     tv = t(xp) .* (1 .- mask)
-#     z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ xp
-#     log_det_J = reshape(sum(sv; dims=1), size(sv, 2))
-#     return z, log_det_J
-#     # return z
-# end
-
+Base.show(io::IO, c::Coupling) = print(io, "Coupling($(size(c.mask)), $(typeof(c.s)), $(typeof(c.t)))")
 
 """
 Forward mapping x → z. Same as f() function in the paper
@@ -62,7 +19,6 @@ function fwd_map(c::Coupling, x)
     z = (1 .- mask) .* (x .- tv) .* exp.(-sv) .+ xp
     log_det_J = reshape(sum(sv; dims=1), size(sv, 2))
     return z, log_det_J
-    # return log_det_J
 end
 
 
@@ -83,10 +39,10 @@ end
 
 function c_loss(c::Coupling, x)
     z, log_det_J = fwd_map(c, x)
-    return sum(z)
+    return sum(abs2.(x .- z))
 end
 
-function aux1()
+function main_coupling()
     flow = RealNVP(2, 256)
     c = flow.c1
     X, y = make_moons()
@@ -96,4 +52,23 @@ function aux1()
     _, g = grad(c_loss, c, x)
 
     g[1][(:mask,)]
+end
+
+
+function main_coupling2()
+    # verified - works
+    lr = 1e-5
+    X, y = make_moons()
+    x = X[:, 1:10]
+    flow = RealNVP(2, 256)
+    c = flow.c1
+    for epoch=1:100
+        epoch_cost = 0
+        for (i, x) in enumerate(eachbatch(X, size=10))
+            cost, g = grad(c_loss, c, x)
+            update!(c, g[1], (x, gx) -> x .- lr * gx)
+            epoch_cost += cost
+        end
+        println(epoch_cost)
+    end
 end
